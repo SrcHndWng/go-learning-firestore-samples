@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 
+	"google.golang.org/api/iterator"
+
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
 	"google.golang.org/api/option"
@@ -52,15 +54,30 @@ func main() {
 }
 
 func reference(ctx context.Context, client *firestore.Client) error {
-	messageRef := client.Collection("rooms").Doc("roomA").
-		Collection("messages").Doc("message1")
+	docs := client.Collection("rooms").Documents(ctx)
+	for {
+		doc, err := docs.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		fmt.Printf("document id = %s\n", doc.Ref.ID)
+		msgDocs := doc.Ref.Collection("messages").Documents(ctx)
+		for {
+			msgDoc, err := msgDocs.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			fmt.Println(msgDoc.Data())
+		}
 
-	snapshot, err := messageRef.Get(ctx)
-	if err != nil {
-		return err
 	}
 
-	fmt.Println(snapshot.Data())
 	return nil
 }
 
